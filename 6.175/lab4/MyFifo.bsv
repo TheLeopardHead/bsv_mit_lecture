@@ -242,6 +242,7 @@ module mkMyCFNCFifo( Fifo#(n, t) ) provisos (Bits#(t,tSz));
 	endfunction
 
 	(* fire_when_enabled *)
+	(* no_implicit_conditions *)
 	rule canonicalize;
 		if(isValid(write[1]) && isValid(read[1])) begin
 			enqP <= roll_add(enqP);
@@ -326,6 +327,7 @@ module mkMyCFFifo( Fifo#(n, t) ) provisos (Bits#(t,tSz));
 	endfunction
 
 	(* fire_when_enabled *)
+	(* no_implicit_conditions *)
 	rule canonicalize;
 		if(isValid(write[1]) && isValid(read[1])) begin
 			enqP[1] <= roll_add(enqP[1]);
