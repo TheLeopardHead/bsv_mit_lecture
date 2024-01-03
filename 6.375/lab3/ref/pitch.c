@@ -139,9 +139,19 @@ int main(int argc, char* argv[])
 
         // Forward FFT
         fftw_execute(forward);
+		
+		for (i = 0; i < N; i++) {
+        printf("in , mag:%lf, pha:%lf\n",cabs(outfft[i]),carg(outfft[i]));
+        }
+        printf("\n");
 
         // Pitch Adjustment.
         pitchadjust(outfft, infft);
+		
+		for (i = 0; i < N; i++) {
+        printf("out, mag:%lf, pha:%lf\n",cabs(infft[i]),carg(infft[i]));
+        }
+        printf("\n");
 
         // Inverse FFT
         // We have to scale down by N because fftw doesn't for us.
