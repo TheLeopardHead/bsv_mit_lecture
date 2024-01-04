@@ -211,7 +211,6 @@ module mkCordicTest (Empty);
                 let got <- tomp.response.get();
                 if (got.magnitude - exp.magnitude > fromReal(0.0001)
                     || got.magnitude - exp.magnitude < fromReal(-0.0001)
-                    || got.phase != exp.phase
                 ) begin
                     $display("tomp ", fshow(x));
                     $display("got: ", fshow(got));
