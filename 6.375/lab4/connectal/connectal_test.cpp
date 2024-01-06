@@ -1,5 +1,7 @@
 #include <stdio.h>
 #include <stdint.h>
+#include <stdlib.h>
+#include <math.h>
 #include <sys/stat.h>
 #include <pthread.h>
 
@@ -43,7 +45,7 @@ public:
     MyDutIndication(unsigned int id) : MyDutIndicationWrapper(id) {}
 };
 
-void run_test_bench(){
+void run_test_bench(uint32_t factorPkt){
     FILE *inpcm = fopen("in.pcm", "rb");
     if (inpcm == NULL) {
         fprintf(stderr, "could not open in.pcm\n");
@@ -67,6 +69,9 @@ void run_test_bench(){
     }
 
     pthread_mutex_init(&outpcmLock, NULL);
+
+	printf("start setting factor\n");
+	device->setFactor(factorPkt);
 
     printf("start sending in.pcm..\n");
 
@@ -107,6 +112,11 @@ void run_test_bench(){
 
 int main (int argc, const char **argv)
 {
+	double pf = atof(argv[1]);
+	uint16_t m_i = (uint16_t)floor(pf);
+    uint16_t m_f = (uint16_t)( pow(2, 16) * (pf - floor(pf)) );
+    uint32_t factorPkt = (uint32_t)(m_i << 16) | m_f;
+
     // Service Indication messages from HW - Register the call-back functions to a indication thread
     MyDutIndication myIndication (IfcNames_MyDutIndicationH2S);
 
@@ -117,5 +127,5 @@ int main (int argc, const char **argv)
     device->reset_dut();
 
     // Run the testbench: send in.cpm
-    run_test_bench();
+    run_test_bench(factorPkt);
 }

@@ -20,6 +20,8 @@ module mkTestDriver (Empty);
     rule init(!m_inited);
         m_inited <= True;
 
+		pipeline.putFactor(2);
+
         File in <- $fopen("in.pcm", "rb");
         if (in == InvalidFile) begin
             $display("couldn't open in.pcm");

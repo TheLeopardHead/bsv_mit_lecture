@@ -14,12 +14,18 @@ typedef Server#(
     Vector#(nbins, ComplexMP#(isize, fsize, psize))
 ) PitchAdjust#(numeric type nbins, numeric type isize, numeric type fsize, numeric type psize);
 
+interface SettablePitchAdjust#(
+	numeric type nbins, numeric type isize, numeric type fsize, numeric type psize
+);
+	interface PitchAdjust#(nbins, isize, fsize, psize) adjust;
+	interface Put#(FixedPoint#(isize, fsize)) setFactor;
+endinterface
 
 // s - the amount each window is shifted from the previous window.
 //
 // factor - the amount to adjust the pitch.
 //  1.0 makes no change. 2.0 goes up an octave, 0.5 goes down an octave, etc...
-module mkPitchAdjust(Integer s, FixedPoint#(isize, fsize) factor, PitchAdjust#(nbins, isize, fsize, psize) ifc) provisos (Add#(psize, a__, isize), Add#(b__, psize, TAdd#(isize, isize)));
+module mkPitchAdjust(Integer s, SettablePitchAdjust#(nbins, isize, fsize, psize) ifc) provisos (Add#(psize, a__, isize), Add#(b__, psize, TAdd#(isize, isize)));
 // TODO: implement this module 
 	FIFO#(Vector#(nbins, ComplexMP#(isize, fsize, psize))) inFIFO <- mkFIFO();
 	FIFO#(Vector#(nbins, ComplexMP#(isize, fsize, psize))) outFIFO <- mkFIFO();
@@ -27,7 +33,10 @@ module mkPitchAdjust(Integer s, FixedPoint#(isize, fsize) factor, PitchAdjust#(n
 	Vector#(nbins, Reg#(Phase#(psize))) inphases <- replicateM(mkReg(0));
 	Vector#(nbins, Reg#(Phase#(psize))) outphases <- replicateM(mkReg(0));
 
-	rule process;
+	Reg#(FixedPoint#(isize, fsize)) factor <- mkReg(0);
+	Reg#(Bool) flag_factor <- mkReg(False);
+
+	rule process (flag_factor == True);
 		Vector#(nbins, ComplexMP#(isize, fsize, psize)) data_in = inFIFO.first();
 		inFIFO.deq();
 		FixedPoint#(isize, fsize) mag_0 = fromInteger(0);
@@ -56,8 +65,17 @@ module mkPitchAdjust(Integer s, FixedPoint#(isize, fsize) factor, PitchAdjust#(n
 		outFIFO.enq(data_out);
 	endrule
 
+interface PitchAdjust adjust;
 	interface Put request = toPut(inFIFO);
 	interface Get response = toGet(outFIFO);
+endinterface
+
+interface Put setFactor;
+	method Action put(FixedPoint#(isize, fsize) x) if(flag_factor == False);
+		factor <= x;
+		flag_factor <= True;
+	endmethod
+endinterface
 
 endmodule
 

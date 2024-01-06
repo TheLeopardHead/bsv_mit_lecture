@@ -14,6 +14,7 @@ import AudioProcessorTypes::*;
 interface MyDutRequest;
     // Bit#(n) is the only supported argument type for request methods
     method Action putSampleInput (Bit#(16) in);
+	method Action setFactor (Bit#(32) factorPkt);
     method Action reset_dut();
 endinterface
 
@@ -58,6 +59,11 @@ module mkMyDut#(MyDutIndication indication) (MyDut);
             cnt <= cnt + 1;
             ap.putSampleInput(unpack(in)); // unpack casts the type of a Bit#(n) value into a different type, i.e., Sample, which is Int#(16)
         endmethod
+
+		method Action setFactor (Bit#(32) factorPkt) if (!isResetting);
+			$display("set factor = %d", factorPkt);
+			ap.putFactor(unpack(factorPkt));
+		endmethod
 
         method Action reset_dut;
             my_rst.assertReset; // assert my_rst.new_rst signal

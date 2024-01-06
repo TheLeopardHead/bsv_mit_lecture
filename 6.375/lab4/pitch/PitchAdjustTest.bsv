@@ -12,7 +12,7 @@ import ComplexMP::*;
 module mkPitchAdjustTest (Empty);
 
     // For nbins = 8, S = 2, pitch factor = 2.0
-    PitchAdjust#(8, 16, 16, 16) adjust <- mkPitchAdjust(2, 2);
+    SettablePitchAdjust#(8, 16, 16, 16) pitch <- mkPitchAdjust(2);
 
     Reg#(Bool) passed <- mkReg(True);
     Reg#(Bit#(32)) feed <- mkReg(0);
@@ -20,14 +20,14 @@ module mkPitchAdjustTest (Empty);
 
     function Action dofeed(Vector#(8, ComplexMP#(16, 16, 16)) x);
         action
-            adjust.request.put(x);
+            pitch.adjust.request.put(x);
             feed <= feed+1;
         endaction
     endfunction
 
     function Action docheck(Vector#(8, ComplexMP#(16, 16, 16)) wnt);
         action
-            let x <- adjust.response.get();
+            let x <- pitch.adjust.response.get();
             if (x != wnt) begin
                 $display("wnt: ", fshow(wnt));
                 $display("got: ", fshow(x));
@@ -36,7 +36,16 @@ module mkPitchAdjustTest (Empty);
             check <= check+1;
         endaction
     endfunction
-    
+   
+	function Action start();
+		action
+			pitch.setFactor.put(2);
+			feed <= feed + 1;
+			check <= check + 1;
+			$display("set factor: 2");
+		endaction
+	endfunction
+
     Vector#(8, ComplexMP#(16, 16, 16)) ti1 = newVector;
     ti1[0] = cmplxmp(1.000000, tophase(3.141593));
     ti1[1] = cmplxmp(1.000000, tophase(-1.570796));
@@ -137,20 +146,20 @@ module mkPitchAdjustTest (Empty);
     to5[6] = cmplxmp(50.134624, tophase(-0.851714));
     to5[7] = cmplxmp(0.000000, tophase(0.000000));
 
-
-    rule f0 (feed == 0); dofeed(ti1); endrule
-    rule f1 (feed == 1); dofeed(ti2); endrule
-    rule f2 (feed == 2); dofeed(ti3); endrule
+	rule init (feed == 0); start(); endrule
+    rule f0 (feed == 1); dofeed(ti1); endrule
+    rule f1 (feed == 2); dofeed(ti2); endrule
+    rule f2 (feed == 3); dofeed(ti3); endrule
 //    rule f3 (feed == 3); dofeed(ti4); endrule
 //	rule f4 (feed == 4); dofeed(ti5); endrule
 
-    rule c0 (check == 0); docheck(to1); endrule
-    rule c1 (check == 1); docheck(to2); endrule
-    rule c2 (check == 2); docheck(to3); endrule
+    rule c0 (check == 1); docheck(to1); endrule
+    rule c1 (check == 2); docheck(to2); endrule
+    rule c2 (check == 3); docheck(to3); endrule
 //    rule c3 (check == 3); docheck(to4); endrule
 //    rule c4 (check == 4); docheck(to5); endrule
 
-    rule finish (feed == 3 && check == 3);
+    rule finish (feed == 4 && check == 4);
         if (passed) begin
             $display("PASSED");
         end else begin

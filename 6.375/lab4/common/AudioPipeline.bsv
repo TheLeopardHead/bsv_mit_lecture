@@ -23,7 +23,7 @@ module mkAudioPipeline(AudioProcessor);
 	OverSampler#(STRIDE, FFT_POINTS, Sample) over_sampler <- mkOverSampler(replicate(0));
     FFT#(FFT_POINTS, FixedPoint#(16, 16)) fft <- mkFFT();
 	ToMP#(FFT_POINTS, 16, 16, 16) to_mp <- mkToMP();
-	PitchAdjust#(FFT_POINTS, 16, 16, 16) adjust <- mkPitchAdjust(2, 2);
+	SettablePitchAdjust#(FFT_POINTS, 16, 16, 16) pitch <- mkPitchAdjust(2);
 	FromMP#(FFT_POINTS, 16, 16, 16) from_mp <- mkFromMP();
     FFT#(FFT_POINTS, FixedPoint#(16, 16)) ifft <- mkIFFT();
 	Overlayer#(FFT_POINTS,STRIDE,Sample) over_layer <- mkOverlayer(replicate(0));
@@ -55,11 +55,11 @@ module mkAudioPipeline(AudioProcessor);
 
 	rule tomp_to_adjust (True);
 		let x <- to_mp.response.get();
-		adjust.request.put(x);
+		pitch.adjust.request.put(x);
 	endrule
 
 	rule adjust_to_frmp (True);
-		let x <- adjust.response.get();
+		let x <- pitch.adjust.response.get();
 		from_mp.request.put(x);
 	endrule
 
@@ -91,6 +91,10 @@ module mkAudioPipeline(AudioProcessor);
         let x <- splitter.response.get();
         return x;
     endmethod
+
+	method Action putFactor(FixedPoint#(16, 16) x);
+		pitch.setFactor.put(x);
+	endmethod
 
 endmodule
 

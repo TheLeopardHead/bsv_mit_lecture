@@ -11,6 +11,7 @@ typedef Int#(16) Sample;
 interface AudioProcessor;
     method Action putSampleInput(Sample in);
     method ActionValue#(Sample) getSampleOutput();
+	method Action putFactor(FixedPoint#(16, 16) in);
 endinterface
 
 
