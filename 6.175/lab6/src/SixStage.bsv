@@ -17,6 +17,7 @@ import GetPut::*;
 import Btb::*;
 import Scoreboard::*;
 import Bht::*;
+import Ras::*;
 
 typedef struct {
     Addr pc;
@@ -88,6 +89,7 @@ module mkProc(Proc);
     CsrFile        csrf <- mkCsrFile;
     Btb#(6)         btb <- mkBtb; // 64-entry BTB
 	Bht#(8)         bht <- mkBht; //256-entry BHT
+	Ras#(8)			ras <- mkRas; //8-depth RAS
 
 	// global epoch for redirection from Execute stage
 	Reg#(Bool) exeEpoch <- mkReg(False);
@@ -126,7 +128,7 @@ module mkProc(Proc);
 		};
 		f2dFifo.enq(f2d);
 
-		$display("Fetch: PC = %x", pcReg[0]);
+		$display("Test Fetch: PC = %x", pcReg[0]);
 	endrule
 
 	//Decode Stage
@@ -140,17 +142,48 @@ module mkProc(Proc);
 				// decode
 				DecodedInst dInst = decode(inst);
 				Addr ppc = f2d.predPc;
-				//BHT Prediction and Jal caculation & update
-				if (dInst.iType == Br || dInst.iType == J) begin
-					Addr decoded_pc = f2d.pc + fromMaybe(?, dInst.imm);
-					Addr target_pc = (dInst.iType == Br)? bht.predPC(f2d.pc, decoded_pc) : decoded_pc;
-					if (target_pc != f2d.predPc) begin
+				Addr decoded_pc = f2d.pc + fromMaybe(?, dInst.imm);
+				//RAS used for Jal push stack and Jal caculation & update
+				if(dInst.iType == J) begin
+					Addr target_j_pc = 	decoded_pc;
+					if (target_j_pc != f2d.predPc) begin
 						dcdRedirect[0] <= tagged Valid DcdRedirect {
                     		pc: f2d.pc,
-                    		nextPc: target_pc
+                    		nextPc: target_j_pc
                 		};
-                		ppc = target_pc;
+                		ppc = target_j_pc;
             		end
+					if ( fromMaybe(?,dInst.dst) == 1) begin
+						ras.push(f2d.pc + 4);
+					end
+				end
+				//BHT Prediction 
+				if (dInst.iType == Br) begin
+					Addr target_br_pc = bht.predPC(f2d.pc, decoded_pc);
+					if (target_br_pc != f2d.predPc) begin
+						dcdRedirect[0] <= tagged Valid DcdRedirect {
+                    		pc: f2d.pc,
+                    		nextPc: target_br_pc
+                		};
+                		ppc = target_br_pc;
+            		end
+				end
+				//RAS used for Jalr prediction
+				if(dInst.iType == Jr) begin
+					if ( fromMaybe(?,dInst.dst) == 1) begin
+						ras.push(f2d.pc + 4);
+					end
+					else if((isValid(dInst.dst) == False) && (fromMaybe(?,dInst.src1) == 1)) begin
+						let t <- ras.pop();
+						Addr target_jr_pc = fromMaybe(f2d.predPc, t);
+						if (target_jr_pc != f2d.predPc) begin
+							dcdRedirect[0] <= tagged Valid DcdRedirect {
+                    		pc: f2d.pc,
+                    		nextPc: target_jr_pc
+                		};
+                		ppc = target_jr_pc;
+						end
+					end
 				end
 				//enq
 				Decode2RegFetch d2r = Decode2RegFetch {
@@ -164,7 +197,7 @@ module mkProc(Proc);
 				$display("Decode: PC = %x, inst = %x, expanded = ", f2d.pc, inst, showInst(inst));
 			end
 			else begin
-				$display("Decode Stage Stall: Br or Jal Redirect. PC = %x", f2d.pc);
+				$display("Decode Stage Stall: Br or Jal or Jalr Redirect. PC = %x", f2d.pc);
 			end
 		end
 		else begin
